@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import json
 
-appdir = Path(__file__).parent.parent
+appdir = Path(__file__).parent
 
 with open(appdir / './data/dataset.json', 'r', encoding='utf-8-sig') as file:
     ds = json.load(file)
