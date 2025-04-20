@@ -2,13 +2,23 @@ from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from pathlib import Path
 import pandas as pd
 import json
+import urllib.request
 
-appdir = Path(__file__).parent
+def load_json_from_url(url):
+    try:
+        with urllib.request.urlopen(url) as response:
+            return json.loads(response.read().decode('utf-8-sig'))
+    except Exception as e:
+        print(f"Error loading data from {url}: {e}")
+        return []
 
-with open(appdir / './data/dataset.json', 'r', encoding='utf-8-sig') as file:
-    ds = json.load(file)
-with open(appdir / './data/wdiff_dataset.json', 'r', encoding='utf-8-sig') as file:
-    ds_diff = json.load(file)
+ds_url = "https://raw.githubusercontent.com/BigToothDev/nlp-sociology-methodology/refs/heads/main/data/dataset.json"
+ds_diff_url = "https://raw.githubusercontent.com/BigToothDev/nlp-sociology-methodology/refs/heads/main/data/wdiff_dataset.json"
+
+ds = load_json_from_url(ds_url)
+ds_diff = load_json_from_url(ds_diff_url)
+
+appdir = Path(__file__).parent.parent if "__file__" in globals() else Path.cwd()
 
 app_ui = ui.page_fluid(
     ui.tags.link(href="styles.css", rel="stylesheet"),
@@ -85,7 +95,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def content():
         article = select_article_by_id()
         if article is not None:
-            return article['content']
+            return article.get('content', "No content available")
         return "No article selected"
 
     @output()
@@ -93,7 +103,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def link():
         article = select_article_by_id()
         if article is not None:
-            return article['url']
+            return article.get('url', "")
         return ""
 
     @output()
@@ -101,7 +111,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def datetime():
         article = select_article_by_id()
         if article is not None:
-            return article['time']
+            return article.get('time', "")
         return ""
 
     @output()
@@ -109,7 +119,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def lemma_tone():
         article = select_article_by_id()
         if article is not None:
-            return f"Negative tone: {article['lemma_neg_tone']} | Neutral tone: {article['lemma_neu_tone']} | Positive tone: {article['lemma_pos_tone']} | Compound tone: {article['lemma_compound_tone']}"
+            return f"Negative tone: {article.get('lemma_neg_tone', 'N/A')} | Neutral tone: {article.get('lemma_neu_tone', 'N/A')} | Positive tone: {article.get('lemma_pos_tone', 'N/A')} | Compound tone: {article.get('lemma_compound_tone', 'N/A')}"
         return ""
 
     @output()
@@ -117,7 +127,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def stem_tone():
         article = select_article_by_id()
         if article is not None:
-            return f"Negative tone: {article['stem_neg_tone']} | Neutral tone: {article['stem_neu_tone']} | Positive tone: {article['stem_pos_tone']} | Compound tone: {article['stem_compound_tone']}"
+            return f"Negative tone: {article.get('stem_neg_tone', 'N/A')} | Neutral tone: {article.get('stem_neu_tone', 'N/A')} | Positive tone: {article.get('stem_pos_tone', 'N/A')} | Compound tone: {article.get('stem_compound_tone', 'N/A')}"
         return ""
 
     @output()
@@ -125,13 +135,17 @@ def server(input: Inputs, output: Outputs, session: Session):
     def lemma_general_sentiment():
         article = select_article_by_id()
         if article is not None:
-            compound_tone = article['lemma_compound_tone']
-            if compound_tone >= 0.05:
-                return "Positive"
-            elif compound_tone <= -0.05:
-                return "Negative"
-            else:
-                return "Neutral"
+            compound_tone = article.get('lemma_compound_tone', 0)
+            try:
+                compound_tone = float(compound_tone)
+                if compound_tone >= 0.05:
+                    return "Positive"
+                elif compound_tone <= -0.05:
+                    return "Negative"
+                else:
+                    return "Neutral"
+            except (ValueError, TypeError):
+                return "Unknown"
         return ""
 
     @output()
@@ -139,13 +153,17 @@ def server(input: Inputs, output: Outputs, session: Session):
     def stem_general_sentiment():
         article = select_article_by_id()
         if article is not None:
-            compound_tone = article['stem_compound_tone']
-            if compound_tone >= 0.05:
-                return "Positive"
-            elif compound_tone <= -0.05:
-                return "Negative"
-            else:
-                return "Neutral"
+            compound_tone = article.get('stem_compound_tone', 0)
+            try:
+                compound_tone = float(compound_tone)
+                if compound_tone >= 0.05:
+                    return "Positive"
+                elif compound_tone <= -0.05:
+                    return "Negative"
+                else:
+                    return "Neutral"
+            except (ValueError, TypeError):
+                return "Unknown"
         return ""
 
     @reactive.effect
@@ -197,4 +215,4 @@ def server(input: Inputs, output: Outputs, session: Session):
             choices=[]
         )
 
-app = App(app_ui, server, static_assets=appdir / "app")
+app = App(app_ui, server)
